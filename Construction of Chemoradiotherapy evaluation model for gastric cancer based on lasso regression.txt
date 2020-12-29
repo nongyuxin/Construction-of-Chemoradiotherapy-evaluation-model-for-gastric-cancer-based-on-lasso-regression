@@ -1,0 +1,111 @@
+library(pec) ##验证模型
+library(rms)  ##拟合生存分析模型
+library(survival)  ##生存分析包
+library(glmnet)  ##Lasso回归包
+library(Matrix) ##Matrix回归包
+#将矩阵的因子变量与其它定量边量合并成数据框，定义了自变量
+x<-as.matrix(DATA[,4:18])
+#x<- as.matrix(DATA~ DATA$age_by60+DATA$race+DATA$married+DATA$gender+DATA$site+DATA$tumorsize_by5cm+DATA$LNR_0.4+DATA$grades+DATA$T+DATA$N+DATA$M+DATA$ifsurgery+DATA$ifradiation+DATA$chemotherapy,DATA)
+dput(x)
+#设置应变量，生存时间和生存状态（生存数据
+y <- data.matrix(Surv(DATA$Survivalmonths,DATA$vitalstatus))
+#调用glmnet包中的glmnet函数，注意family那里一定要制定是“cox”，如果是做logistic需要换成"binomial"。
+fit <-glmnet(x,y,family = "cox",alpha = 1)
+plot(fit,xvar="lambda",label=T) ##见图一
+#主要在做交叉验证,lasso
+fitcv <- cv.glmnet(x,y,family="cox", alpha=1,nfolds=10)
+plot(fitcv)  ## 见图2
+print(fitcv) ## 1个标准差对应变量少，选此收缩系数
+coef(fitcv, s="lambda.1se")  ## 查看入选变量，后面有数字的为入选变量
+
+
+# 测试模型
+alpha0.5.predicted <- predict(alpha0.5.fit, 
+                              s=alpha0.5.fit$lambda.1se, 
+                              newx=x.test)
+
+mean((y.test - alpha0.5.predicted)^2)
+#_____table.one
+## tableone package itself
+library(tableone)
+## survival package for Mayo Clinic's PBC data
+library(survival)
+CreateTableOne(data = DATA)
+## Get variables names
+dput(names(DATA))
+## Vector of variables to summarize
+myVars <- c("PatientID", "vitalstatus", "Survivalmonths", "age_by60", "race", 
+            "married", "gender", "site", "tumorsize_by5cm", "LNR_0.4", "grades", 
+            "T", "N", "M", "ifsurgery", "ifradiation", "chemotherapy", "causespecificdeath"
+)
+## Vector of categorical variables that need transformation
+catVars <- c("PatientID", "vitalstatus", "Survivalmonths", "age_by60", "race", 
+             "married", "gender", "site", "tumorsize_by5cm", "LNR_0.4", "grades", 
+             "T", "N", "M", "ifsurgery", "ifradiation", "chemotherapy", "causespecificdeath"
+)
+tab2 <- CreateTableOne(vars = myVars, data = pbc, factorVars = catVars)
+
+
+tab3 <- CreateTableOne(vars = myVars, strata = "trt" , data = pbc, factorVars = catVars)
+print(tab3, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
+
+## Vector of variables to summarize
+myVars <- c("age_by60", "race", 
+             "married", "gender", "site", "tumorsize_by5cm", "LNR_0.4", "grades", 
+             "T", "N", "M", "ifsurgery", "ifradiation", "chemotherapy")
+tab2 <- CreateTableOne(vars = myVars, data = DATA, factorVars = catVars)
+## Vector of categorical variables that need transformation
+catVars <- c("age_by60", "race", 
+             "married", "gender", "site", "tumorsize_by5cm", "LNR_0.4", "grades", 
+             "T", "N", "M", "ifsurgery", "ifradiation", "chemotherapy")
+tab2 <- CreateTableOne(vars = myVars, data = DATA, factorVars = catVars)
+tab2
+biomarkers <- c("age_by60", "race", 
+                "married", "gender", "site", "tumorsize_by5cm", "LNR_0.4", "grades", 
+                "T", "N", "M", "ifsurgery", "ifradiation", "chemotherapy")
+print(tab2, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
+tab3 <- CreateTableOne(vars = myVars, strata = "trt" , data = DATA, factorVars = catVars)
+print(tab3, nonnormal = biomarkers, formatOptions = list(big.mark = ","))
+#Nothing
+u <- data(CoxExample)
+y[1:5,]
+fit = glmnet(x, y, family = "cox")
+plot(fit,label=T)
+plot(fit,xvar="lambda",label=T)
+#_____
+cv.fit <- cv.glmnet(DATA$x, Surv(DATA$Survivalmonths, DATA$vitalstatus), family="cox", maxit = 1000)
+fit <- glmnet(DATA$x, Surv(DATA$Survivalmonths, DATA$vitalstatus), family =  "cox", maxit = 1000)
+#
+library("glmnet")
+library("survival")
+patient.data  <- readRDS("assets/coxnet.RDS")
+
+## ---- warning = TRUE-----------------------------------------------------
+cv.fit <- cv.glmnet(patient.data$x, Surv(patient.data$time, patient.data$status), family="cox", maxit = 1000)
+fit <- glmnet(patient.data$x, Surv(patient.data$time,patient.data$status), family =  "cox", maxit = 1000)
+
+## ------------------------------------------------------------------------
+plot(cv.fit)
+#___________________________________________-
+library("glmnet")
+library("survival") data(QuickStartExample)
+patient.data  <- DATA
+fit <-glmnet(x,y,family = "cox",alpha = 1)
+plot(fit,label=T)
+plot(fit,xvar="lambda",label=T)
+## ---- warning = TRUE-----------------------------------------------------
+cv.fit <- cv.glmnet(patient.data$x, Surv(patient.data$time, patient.data$status), family="cox")
+fit <- glmnet(patient.data$x, Surv(patient.data$time,patient.data$status), family =  "cox")
+
+## ------------------------------------------------------------------------
+plot(cv.fit)
+cv.fit$lambda.min
+
+## ------------------------------------------------------------------------
+Coefficients <- coef(fit, s = cv.fit$lambda.min)
+Active.Index <- which(Coefficients != 0)
+Active.Coefficients  <- Coefficients[Active.Index]
+
+## ------------------------------------------------------------------------
+Active.Index
+Active.Coefficients
